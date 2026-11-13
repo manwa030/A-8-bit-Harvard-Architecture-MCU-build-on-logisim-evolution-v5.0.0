@@ -131,6 +131,7 @@
       <a name="clearpin" val="true"/>
       <a name="databus" val="bibusControlled"/>
       <a name="readbehav" val="war"/>
+      <a name="trigger" val="falling"/>
     </comp>
     <comp lib="5" loc="(770,160)" name="ROM">
       <a name="appearance" val="classic"/>
