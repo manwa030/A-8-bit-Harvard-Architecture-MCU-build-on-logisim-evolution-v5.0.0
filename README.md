@@ -1,4 +1,4 @@
-![photo](photo/屏幕截图 2026-11-13 185314.png) 
+![photo](https://github.com/manwa030/A-8-bit-Harvard-Architecture-MCU-build-on-logisim-evolution-v5.0.0/blob/main/photo/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202026-11-13%20185314.png)
 # A-8-bit-Harvard-Architecture-MCU-build-on-logisim-evolution-v5.0.0
 This is a Turing-complete microprocessor based on the Harvard architecture, built using Logisim Evolution v5.0.0.  
 It includes an ALU capable of processing 8-bit data, a register file, a program counter (PC), a ROM for storing instructions, a RAM and control unit.
