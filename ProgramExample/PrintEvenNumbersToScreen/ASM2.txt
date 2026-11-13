@@ -1,0 +1,71 @@
+
+;for i in range 255, if i % 2 == 0，print i
+
+start:
+        li   r1, 0          ; i
+        li   r2, 2         ; divider
+        li   r3, 255        ; range
+
+main:
+        li   r2, 20        ; restore divider
+        call divide
+        beq  r0, r4, print
+
+continue:
+        addi r1, r1, 1
+        bltu r1, r3, main
+        j    end
+
+; ------------------------------------------------
+divide:
+        mv   r4, r1         ; remain
+        li   r6, 0          ; quotient
+        bltu r4, r2, divideDone
+
+divideloop:
+        sub  r4, r4, r2
+        addi r6, r6, 1
+        bgeu r4, r2, divideloop
+
+divideDone:
+        ret
+
+; ------------------------------------------------
+print:  binaryToBCD
+        mv   r4, r1         ; value
+        li   r5, 0          ; hundreds
+        li   r6, 100
+
+h_loop:
+        bltu r4, r6, h_done
+        sub  r4, r4, r6
+        addi r5, r5, 1
+        j    h_loop
+
+h_done:
+        li   r6, 0          ; tens
+        li   r2, 10         ; 
+
+t_loop:
+        bltu r4, r2, t_done
+        sub  r4, r4, r2
+        addi r6, r6, 1
+        j    t_loop
+
+t_done:
+        beq  r5, r0, skip_h
+        sw   r5, 255(r0)    ; hundreds  //   255(r0) -->print to screen
+
+skip_h:
+        bne  r5, r0, print_t
+        beq  r6, r0, skip_t
+
+print_t:
+        sw   r6, 255(r0)    ; tens
+
+skip_t:
+        sw   r4, 255(r0)    ; ones
+        j    continue
+
+end:
+        j    end

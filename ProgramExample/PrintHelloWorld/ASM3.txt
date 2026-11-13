@@ -1,0 +1,33 @@
+;Storing the corresponding ASCII numbers in RAM 255 = Displaying corresponding symbols/characters on the screen.
+li r1, 72 ;H
+sw r1, 255(r0)
+
+li r1, 101 ;e
+sw r1, 255(r0)
+
+li r1, 108 ;l
+sw r1, 255(r0)
+
+li r1, 108 ;l
+sw r1, 255(r0)
+
+li r1, 111 ;o
+sw r1, 255(r0)
+
+li r1, 32  ;space
+sw r1, 255(r0)
+
+li r1, 87  ;W
+sw r1, 255(r0)
+
+li r1, 111 ;o
+sw r1, 255(r0)
+
+li r1, 114 ;r
+sw r1, 255(r0)
+
+li r1, 108 ;l
+sw r1, 255(r0)
+
+li r1, 100 ;d
+sw r1, 255(r0)
