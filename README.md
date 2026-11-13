@@ -53,7 +53,7 @@ sw r1, 255(r0)
 ___
 **Author**:WU Man Wa,Jack  
 **IG**: [manwa030](https://www.instagram.com/manwa030?srtk=MXM2dTJrd2llbWhzNA==)  
-**Website**: [manwa.xo.je](manwa.xo.je)  
+**Website**: [manwa.xo.je](https://manwa.xo.je/)  
 **Last update**: 2026/11/13  
 
 
