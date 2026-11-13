@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CPU8b Studio — C8 編譯器與模擬器</title>
+<style>
+:root{
+  --bg:#070b14; --bg2:#0b1220; --panel:#101a2e; --panel2:#0d1626;
+  --line:#22314d; --line2:#2e4266; --text:#dbe6ff; --muted:#8397b8;
+  --accent:#5eead4; --accent2:#38bdf8; --warn:#fbbf24; --bad:#fb7185;
+  --ok:#34d399; --mono:"Cascadia Code","SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  --sans:"Segoe UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(1200px 600px at 15% -10%,#12233f 0%,transparent 55%),radial-gradient(900px 500px at 110% 0%,#0e2a2a 0%,transparent 50%),var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden}
+button,select{font-family:inherit}
+header{height:74px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 22px;border-bottom:1px solid var(--line);background:rgba(8,13,24,.82);backdrop-filter:blur(12px);position:relative;z-index:5}
+.brand{display:flex;align-items:center;gap:13px;min-width:260px}
+.logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:20px;color:#03131a;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 22px rgba(94,234,212,.28)}
+.brand h1{font-size:17px;margin:0;letter-spacing:.3px}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--muted);letter-spacing:.4px}
+.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+button,.sel{height:34px;border:1px solid var(--line2);background:#0e192b;color:var(--text);border-radius:8px;padding:0 12px;font-size:12.5px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+button:hover,.sel:hover{border-color:#4d6a9c;background:#14233b}
+button:active{transform:translateY(1px)}
+button.primary{background:linear-gradient(135deg,#0f766e,#0e7490);border-color:#2dd4bf;color:#ecfeff;font-weight:600}
+button.primary:hover{filter:brightness(1.12)}
+button.ghost{background:transparent}
+button:disabled{opacity:.4;cursor:not-allowed}
+kbd{font-family:var(--mono);font-size:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:1px 5px;color:#c8d6ef}
+.sel{padding-right:26px;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#7dd3fc 50%),linear-gradient(135deg,#7dd3fc 50%,transparent 50%);background-position:calc(100% - 14px) 14px,calc(100% - 9px) 14px;background-size:5px 5px;background-repeat:no-repeat}
+main{height:calc(100% - 74px - 30px);display:grid;grid-template-columns:minmax(0,1fr) 392px;gap:14px;padding:14px 18px 10px;overflow:hidden}
+.workbench{min-width:0;display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.22)}
+.tabbar{display:flex;align-items:center;gap:2px;padding:7px 9px 0;border-bottom:1px solid var(--line);background:#0a1322}
+.tab{border:0;background:transparent;color:var(--muted);border-radius:8px 8px 0 0;height:36px;padding:0 14px;font-size:12.5px;cursor:pointer;border-bottom:2px solid transparent}
+.tab:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:linear-gradient(180deg,rgba(94,234,212,.08),transparent)}
+.tab .badge{font-size:10px;color:#0b1220;background:var(--accent);border-radius:99px;padding:1px 6px;margin-left:6px;font-weight:700}
+.panes{position:relative;flex:1;min-height:0}
+.pane{position:absolute;inset:0;display:none;min-height:0}
+.pane.active{display:flex;flex-direction:column}
+.editor-wrap{position:relative;flex:1;min-height:0;display:flex;background:#0b1424}
+.gutter{width:52px;flex:0 0 52px;padding:14px 9px 14px 0;text-align:right;color:#4f6485;font:13px/1.65 var(--mono);user-select:none;overflow:hidden;background:#091120;border-right:1px solid #17243a}
+#src{flex:1;resize:none;border:0;outline:0;background:transparent;color:#d7e5ff;padding:14px 18px;font:13px/1.65 var(--mono);tab-size:2;white-space:pre;overflow:auto;caret-color:var(--accent)}
+#src::selection{background:rgba(56,189,248,.25)}
+.pre{margin:0;padding:14px 18px;overflow:auto;font:12.5px/1.7 var(--mono);color:#c7d7f5;white-space:pre;flex:1}
+.pre .addr{color:#5f7ba6}
+.pre .lbl{color:#fbbf24}
+.pre .cur{background:rgba(94,234,212,.14);outline:1px solid rgba(94,234,212,.25);border-radius:4px}
+.hexbox{padding:14px 18px;overflow:auto;flex:1}
+.hexbox pre{margin:0;font:13px/1.9 var(--mono);color:#b7f7e8;white-space:pre-wrap;word-break:break-all}
+.docs{padding:18px 22px;overflow:auto;flex:1;line-height:1.7;font-size:13px;color:#c6d5ef}
+.docs h2{font-size:16px;margin:20px 0 8px;color:#e8f1ff;border-left:3px solid var(--accent);padding-left:9px}
+.docs h2:first-child{margin-top:0}
+.docs h3{font-size:13.5px;margin:16px 0 6px;color:#9fe8dc}
+.docs p{margin:7px 0;color:#b7c8e2}
+.docs code{font-family:var(--mono);background:#0a1626;border:1px solid #1d2c45;border-radius:4px;padding:1px 5px;color:#a5f3fc;font-size:12px}
+.docs table{border-collapse:collapse;width:100%;margin:9px 0 14px;font-size:12px}
+.docs th,.docs td{border:1px solid #22314d;padding:5px 8px;text-align:left}
+.docs th{background:#0d1b2e;color:#9fb6d8;font-weight:600}
+.docs tr:nth-child(even) td{background:rgba(255,255,255,.012)}
+.docs ul{margin:6px 0;padding-left:20px}
+.docs li{margin:3px 0}
+.side{min-height:0;display:flex;flex-direction:column;gap:12px;overflow:auto;padding-right:2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 10px 28px rgba(0,0,0,.16);flex:none}
+.card h2{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#8ea6c9;margin:0;padding:10px 13px 8px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.card h2 .hint{font-size:10px;letter-spacing:0;text-transform:none;color:#617a9e;font-weight:400}
+.cpu-body{padding:11px 13px 13px}
+.statusline{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:11.5px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:#64748b;box-shadow:0 0 0 3px rgba(100,116,139,.12)}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 3px rgba(52,211,153,.13)}
+.dot.bad{background:var(--bad);box-shadow:0 0 0 3px rgba(251,113,133,.13)}
+.dot.run{background:var(--warn);box-shadow:0 0 0 3px rgba(251,191,36,.15)}
+.regs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.reg{background:#0a1424;border:1px solid #1d2d47;border-radius:7px;padding:5px 7px;min-width:0}
+.reg .n{font:10px var(--mono);color:#6780a5}
+.reg .v{font:13px var(--mono);color:#d9f99d;margin-top:1px}
+.pcbar{display:flex;gap:8px;margin-top:9px}
+.pill{flex:1;background:#0a1424;border:1px solid #1d2d47;border-radius:7px;padding:5px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.pill span{font-size:10px;color:#6780a5}
+.pill b{font:12px var(--mono);color:#7dd3fc;font-weight:500}
+.console{background:#050b14;border-top:1px solid #17243a;padding:9px 12px;min-height:62px;max-height:140px;overflow:auto}
+#out{font:12.5px/1.55 var(--mono);color:#a7f3d0;white-space:pre-wrap;word-break:break-word;margin:0}
+#out .dim{color:#4b6385}
+.vars{max-height:170px;overflow:auto;padding:6px 10px 9px}
+.var{display:grid;grid-template-columns:minmax(70px,1fr) 52px minmax(60px,1.3fr);gap:6px;align-items:baseline;padding:3px 0;border-bottom:1px dashed rgba(34,49,77,.55);font-size:11.5px}
+.var:last-child{border:0}
+.var .name{color:#bfdbfe;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis}
+.var .addr{color:#5f7ba6;font:10.5px var(--mono)}
+.var .val{color:#fde68a;font:11.5px var(--mono);text-align:right;overflow:hidden;text-overflow:ellipsis}
+.memwrap{padding:8px 10px 10px}
+.mem{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;font:9px var(--mono)}
+.mem div{height:15px;display:grid;place-items:center;border-radius:2px;background:#0a1424;color:#7891b5;cursor:default;position:relative}
+.mem div.memvar{background:#112b3a;color:#a5f3fc}
+.mem div.changed{background:#14532d;color:#bbf7d0}
+.mem div.port{background:#3b1d0a;color:#fdba74}
+.mem div.zero{color:#3b4e6b}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:7px;font-size:10px;color:#6d86aa}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.err{border:1px solid rgba(251,113,133,.45);background:rgba(127,29,29,.18);color:#fecdd3;border-radius:10px;padding:9px 12px;font-size:12px;margin:10px 12px 0;display:none;white-space:pre-wrap}
+.err.show{display:block}
+.stats{display:flex;gap:6px;align-items:center;font-size:10.5px;color:#6f88ac;padding:0 13px 9px}
+.stats b{color:#a7f3d0;font-weight:500}
+footer{height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:11px;color:#617a9e;border-top:1px solid rgba(34,49,77,.55);background:rgba(7,11,20,.7)}
+footer .right{display:flex;gap:16px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#1e2f4a;border-radius:6px;border:2px solid transparent;background-clip:content-box}
+@media (max-width:1100px){main{grid-template-columns:minmax(0,1fr) 340px}}
+@media (max-width:900px){
+  body{overflow:auto}
+  header{height:auto;padding:12px 14px;flex-wrap:wrap}
+  main{height:auto;grid-template-columns:1fr;overflow:visible}
+  .workbench{height:64vh;min-height:460px}
+  .side{overflow:visible}
+  footer{height:auto;padding:8px 14px;flex-wrap:wrap;gap:5px}
+}
+
+.modes{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-right:2px}
+.modebtn{height:32px;border:0;border-radius:0;background:#0e192b;color:var(--muted);padding:0 11px;font-size:11.5px;font-weight:700;letter-spacing:.3px;cursor:pointer}
+.modebtn:hover{background:#14233b;color:var(--text)}
+.modebtn.active{background:linear-gradient(135deg,#0f766e,#0e7490);color:#ecfeff}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">8</div>
+    <div>
+      <h1>CPU8b Studio</h1>
+      <p>哈佛架構 8-bit CPU · C8 compiler / assembler / simulator</p>
+    </div>
+  </div>
+  <div class="actions">
+    <div class="modes" id="modes">
+      <button class="modebtn" data-mode="c8">C8</button>
+      <button class="modebtn active" data-mode="asm">ASM</button>
+    </div>
+    <select id="examples" class="sel" title="載入範例"></select>
+    <button id="btnCompile" title="編譯（Ctrl+Enter）">編譯 <kbd>Ctrl↵</kbd></button>
+    <button id="btnRun" class="primary" title="執行（F5）">▶ 執行 <kbd>F5</kbd></button>
+    <button id="btnStep" title="單步（F10）">單步</button>
+    <button id="btnReset" class="ghost" title="重設 CPU">重設</button>
+    <button id="btnCircuit" class="ghost" title="把目前 HEX 寫入 .circ 的 ROM 並下載">寫入 .circ</button>
+    <button id="btnDownload" class="ghost" title="下載 Logisim v2.0 raw">下載 HEX</button>
+    <input id="circFile" type="file" accept=".circ,application/xml,text/xml" style="display:none">
+  </div>
+</header>
+
+<main>
+  <section class="workbench">
+    <div class="tabbar" id="tabbar">
+      <button class="tab active" data-tab="src">原始碼</button>
+      <button class="tab" data-tab="asm">組譯 <span class="badge" id="sizeBadge">0</span></button>
+      <button class="tab" data-tab="hex">HEX</button>
+      <button class="tab" data-tab="docs">說明</button>
+    </div>
+    <div class="panes">
+      <div class="pane active" id="pane-src">
+        <div class="editor-wrap">
+          <pre class="gutter" id="gutter">1</pre>
+          <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"></textarea>
+        </div>
+        <div class="err" id="err"></div>
+        <div class="stats" id="stats"><span>就緒</span></div>
+      </div>
+      <div class="pane" id="pane-asm"><pre class="pre" id="asm"></pre></div>
+      <div class="pane" id="pane-hex"><div class="hexbox"><pre id="hex"></pre></div></div>
+      <div class="pane" id="pane-docs"><div class="docs" id="docs">
+        <h2>直接寫 Assembly（ASM 模式）</h2>
+        <p>右上角切到 <b>ASM</b>，編輯器就是純組合語言。按「編譯」會組譯成 32-bit 指令；按「執行」或「單步」直接在模擬器跑。右側「符號表」會列出每個 label 的位址與該位址的指令 word。</p>
+        <h3>語法</h3>
+        <ul>
+          <li>每行：<code>[label:] mnemonic operands</code>；<code>;</code> 或 <code>#</code> 後面是註解。</li>
+          <li>暫存器：<code>r0</code>–<code>r7</code>；<code>r0</code> 恆為 0。</li>
+          <li>立即值：<code>10</code>、<code>0x1F</code>、<code>-1</code>（8-bit 會自動取補數）。</li>
+          <li>記憶體：<code>lw r1, 16(r0)</code>、<code>sw r1, 0(r3)</code>；位址是 <code>(rs + imm) &amp; 255</code>。</li>
+          <li>標籤可單獨一行，或寫成 <code>loop: add r1, r1, r2</code>。</li>
+          <li>分支／跳躍都寫標籤；assembler 自動算 <code>b&lt;cond&gt;</code> 的相對 offset，<code>j</code>／<code>call</code> 用絕對位址。</li>
+          <li>目前不支援 <code>.org</code>／<code>.equ</code>／資料段；常數請用 <code>li</code>。</li>
+        </ul>
+        <h3>常用指令</h3>
+        <table>
+          <tr><th>寫法</th><th>意義</th></tr>
+          <tr><td><code>li r1, 5</code></td><td>r1 ← 5</td></tr>
+          <tr><td><code>mv r1, r2</code></td><td>r1 ← r2；編成 <code>addi r1, r2, 0</code></td></tr>
+          <tr><td><code>add r1, r2, r3</code></td><td>r1 ← r2 + r3（sub/and/or/xor 同理）</td></tr>
+          <tr><td><code>addi r1, r2, 1</code></td><td>r1 ← r2 + 1（andi/ori/xori 同理）</td></tr>
+          <tr><td><code>slli r1, r1, 1</code></td><td>邏輯左移；<code>srli</code>／<code>srai</code> 同理</td></tr>
+          <tr><td><code>lw r1, 16(r0)</code></td><td>r1 ← RAM[16]</td></tr>
+          <tr><td><code>sw r1, 16(r0)</code></td><td>RAM[16] ← r1</td></tr>
+          <tr><td><code>beq r1, r2, label</code></td><td>相等時相對分支（bne/blt/bge/bgt/ble，加 u 為無號）</td></tr>
+          <tr><td><code>j label</code> / <code>call label</code> / <code>ret</code></td><td>絕對跳躍／呼叫／返回</td></tr>
+          <tr><td><code>nop</code> / <code>halt</code></td><td>空指令／停止（硬體不一定停，建議 <code>j self</code>）</td></tr>
+        </table>
+        <h3>最小範例</h3>
+        <pre style="background:#08111f;border:1px solid #1d2c45;border-radius:8px;padding:10px 12px;overflow:auto;color:#a7f3d0;font:12px/1.6 var(--mono)">        li   r1, 0
+        li   r2, 1
+        li   r3, 6
+loop:   blt  r2, r3, body
+        j    done
+body:   add  r1, r1, r2
+        addi r2, r2, 1
+        j    loop
+done:   sw   r1, 0(r0)
+end:    j    end</pre>
+        <p>模擬器約定：寫 <code>RAM[0xFE]</code> 會把 byte 附加到 console；寫 <code>RAM[0xFF]</code> 非 0 會停止。真實 Logisim 電路沒有這個 I/O，除非另外加顯示硬體。</p>
+
+        <h2>CPU8b 是什麼？</h2>
+        <p><b>CPU8b</b> 是 <code>CPU8b.circ</code>（Logisim 2.7.1）內的單週期、哈佛架構 8-bit CPU：指令與資料分開存放，每個時鐘週期完成一條指令。指令字寬 32 bit，資料與暫存器都是 8 bit。</p>
+        <table>
+          <tr><th>項目</th><th>規格</th></tr>
+          <tr><td>指令 ROM</td><td>256 × 32 bit（8-bit 位址）</td></tr>
+          <tr><td>資料 RAM</td><td>256 × 8 bit（8-bit 位址，separate bus）</td></tr>
+          <tr><td>暫存器</td><td>r0–r7；<b>r0 永遠為 0</b>，r1–r7 可寫</td></tr>
+          <tr><td>PC / LINK</td><td>各 8 bit；PC 指向 ROM，LINK 存 JSR 返回位址</td></tr>
+          <tr><td>ALU</td><td>add / sub / and / or / xor / sll / srl / sra，另含條件比較</td></tr>
+          <tr><td>定址</td><td><code>lw rd, imm(rs)</code>、<code>sw rt, imm(rs)</code>，位址 =(rs+imm) mod 256</td></tr>
+        </table>
+
+        <h2>指令格式（32 bit）</h2>
+        <table>
+          <tr><th>bits</th><th>31:29</th><th>28:26</th><th>25:23</th><th>22:20</th><th>19:17</th><th>16:14</th><th>13:6</th><th>5:3</th><th>2:0</th></tr>
+          <tr><td>欄位</td><td>rd</td><td>rs</td><td>rt</td><td>shamt</td><td>funct</td><td>cond</td><td>imm8</td><td>PCop</td><td>opcode</td></tr>
+        </table>
+
+        <h3>opcode</h3>
+        <table>
+          <tr><th>op</th><th>指令類別</th><th>行為</th></tr>
+          <tr><td>000</td><td>ALU reg</td><td><code>rd = rs funct rt</code>（無號）</td></tr>
+          <tr><td>001</td><td>ALU imm</td><td><code>rd = rs funct imm8</code></td></tr>
+          <tr><td>010</td><td>shift logical</td><td><code>rd = rs &lt;&lt;/&gt;&gt; shamt</code></td></tr>
+          <tr><td>011</td><td>li</td><td><code>rd = imm8</code></td></tr>
+          <tr><td>100</td><td>lw</td><td><code>rd = RAM[(rs+imm8)&amp;255]</code></td></tr>
+          <tr><td>101</td><td>sw</td><td><code>RAM[(rs+imm8)&amp;255] = rt</code></td></tr>
+          <tr><td>110</td><td>shift arithmetic / signed</td><td><code>sra</code>；有號比較與分支</td></tr>
+          <tr><td>111</td><td>halt</td><td>停止（實際電路若不停，請用 <code>j self</code>）</td></tr>
+        </table>
+
+        <h3>funct（ALU）</h3>
+        <table><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+        <tr><td>add</td><td>sub</td><td>and</td><td>or</td><td>xor</td><td>sll</td><td>srl</td><td>sra</td></tr></table>
+
+        <h3>PCop（程式計數器）</h3>
+        <table>
+          <tr><th>PCop</th><th>動作</th></tr>
+          <tr><td>000</td><td>PC ← PC + 1</td></tr>
+          <tr><td>001</td><td>PC ← imm8（絕對跳躍，<code>j</code>）</td></tr>
+          <tr><td>010</td><td>條件成立：PC ← PC + sign_extend(imm8)（<b>相對分支</b>）</td></tr>
+          <tr><td>011</td><td>PC ← LINK（<code>ret</code>）</td></tr>
+          <tr><td>100</td><td>LINK ← PC + 1；PC ← imm8（<code>call</code>）</td></tr>
+        </table>
+        <p><b>重要：</b>分支的 imm8 是「相對目前 PC 的位移」，不是絕對位址；<code>j</code> 與 <code>call</code> 的 imm8 才是絕對位址。編譯器已自動換算。</p>
+
+        <h3>cond</h3>
+        <table><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+        <tr><td>eq</td><td>ne</td><td>lt</td><td>ge</td><td>gt</td><td>le</td></tr></table>
+        <p>有號／無號由 opcode 決定：<code>110</code> 有號（<code>blt</code> 等），<code>000</code> 無號（<code>bltu</code> 等）。</p>
+
+        <h2>C8 語言</h2>
+        <p>C8 是為這顆 CPU 設計的小型 C 子集，編譯成 32-bit 指令後可直接放入 ROM。</p>
+        <h3>支援</h3>
+        <ul>
+          <li>全域變數與一維陣列：<code>int x;</code>、<code>int a[8] = {1,2,3};</code>、<code>byte b;</code></li>
+          <li>運算子：<code>+ - * / % &amp; | ^ ~ ! &lt;&lt; &gt;&gt; &lt; &lt;= &gt; &gt;= == != &amp;&amp; ||</code>、賦值與複合賦值</li>
+          <li>控制流：<code>if/else</code>、<code>while</code>、<code>for</code>、<code>do/while</code>、<code>break</code>、<code>continue</code>、<code>return</code></li>
+          <li>輸出（模擬器慣例）：<code>print("text")</code>、<code>printnum(expr)</code>（十六進位）、<code>putchar(expr)</code>、<code>exit()</code></li>
+          <li><code>void main() { ... }</code> 或直接把語句寫在最外層</li>
+        </ul>
+        <h3>限制</h3>
+        <ul>
+          <li>沒有函式／遞迴（hardware 只有一個 LINK 暫存器）；請用迴圈。</li>
+          <li>位移量必須是常數 0–7；<code>* / %</code> 以組合語言迴圈展開，僅支援 8-bit 無號除法。</li>
+          <li>所有變數靜態配置在 RAM 0x00–0xDF；最多 224 bytes。</li>
+          <li>不做陣列越界檢查；程式最多 256 條指令。</li>
+          <li><code>int</code> 比較採有號；<code>byte</code> 目前與 <code>int</code> 相同（保留欄位）。</li>
+        </ul>
+
+        <h2>記憶體約定</h2>
+        <table>
+          <tr><th>位址</th><th>用途</th></tr>
+          <tr><td>0x00–0xDF</td><td>全域變數／陣列（編譯器配置）</td></tr>
+          <tr><td>0xE0–0xED</td><td>編譯器保留 scratch（目前未使用）</td></tr>
+          <tr><td>0xFE</td><td><b>輸出埠</b>：寫入 byte 會附加到模擬器 console</td></tr>
+          <tr><td>0xFF</td><td><b>結束埠</b>：寫入非 0 會停止模擬器</td></tr>
+        </table>
+        <p>0xFE / 0xFF 只是模擬器與 GUI 的軟體慣例；在真實 Logisim 電路中它們仍然是一般 RAM 格子，不會有 I/O 效果。</p>
+
+        <h2>放入 Logisim</h2>
+        <ol>
+          <li>在 CPU8b.circ 的 ROM 按右鍵 → <b>Load Image</b>，選 <code>.hex</code>。</li>
+          <li>ROM 的 <code>addr/data</code> 要是 <code>8 32</code>；資料格式是 <code>v2.0 raw</code>。</li>
+          <li>按 <b>Reset</b>（clear）再開 clock；程式從位址 0 開始。</li>
+          <li>編譯器結尾會放 <code>j self</code>；若你的電路 halt 不會停 PC，這是安全的結尾。</li>
+        </ol>
+
+        <h2>把 HEX 寫入 .circ（2.7.1 / Evolution 5）</h2>
+        <p>GUI 右上角的 <b>「寫入 .circ」</b> 可以直接把目前編譯好的 HEX 塞進電路檔的 ROM，下載一個已燒錄的 <code>*_programmed.circ</code>。支援 <code>CPU8b.circ</code>（Logisim 2.7.1）與 <code>CPU8b_evol.circ</code>（Logisim-evolution 5.0）。</p>
+        <ol>
+          <li>先按「編譯」，確認沒有錯誤。</li>
+          <li>按「寫入 .circ」，選擇你的 <code>.circ</code>。</li>
+          <li>瀏覽器會下載 <code>原檔名_programmed.circ</code>；用 Logisim 打開即可。</li>
+          <li>它會找第一個 32-bit ROM（<code>addr/data: 8 32</code>），只改 ROM 內容，其餘接線不動。</li>
+        </ol>
+        <p>如果電路有多個 ROM，請確認第一個 32-bit ROM 是指令 ROM；<code>CPU8b</code> 與 <code>CPU8b_evol</code> 都只有一個。</p>
+
+        <h2>檔案與指令列</h2>
+        <p>同一資料夾的 <code>c8c.py</code> 提供命令列版本：</p>
+        <pre style="background:#08111f;border:1px solid #1d2c45;border-radius:8px;padding:10px 12px;overflow:auto;color:#a7f3d0;font:12px/1.6 var(--mono)">py -3 c8c.py program.c8 --run
+py -3 c8c.py program.c8 -o program.hex
+py -3 c8c.py program.asm --assemble --run</pre>
+        <p>GUI 是這個 <code>c8studio.html</code> 單檔；所有編譯與模擬都在瀏覽器內完成，不需要網路。</p>
+</div></div>
+    </div>
+  </section>
+
+  <aside class="side">
+    <div class="card">
+      <h2>CPU 狀態 <span class="hint" id="cpuHint">idle</span></h2>
+      <div class="cpu-body">
+        <div class="statusline"><span class="dot" id="dot"></span><span id="statusText">等待編譯</span></div>
+        <div class="regs" id="regs"></div>
+        <div class="pcbar">
+          <div class="pill"><span>PC</span><b id="pc">00</b></div>
+          <div class="pill"><span>LINK</span><b id="link">00</b></div>
+          <div class="pill"><span>CYCLES</span><b id="cycles">0</b></div>
+        </div>
+      </div>
+      <div class="console"><pre id="out"><span class="dim">（輸出會顯示在這裡）</span></pre></div>
+    </div>
+
+    <div class="card">
+      <h2><span id="varsTitle">變數</span> <span class="hint" id="varsHint">RAM</span></h2>
+      <div class="vars" id="vars"><div class="var"><span class="name" style="color:#617a9e">尚無變數</span><span class="addr"></span><span class="val"></span></div></div>
+    </div>
+
+    <div class="card">
+      <h2>記憶體 <span class="hint">16 × 16 bytes</span></h2>
+      <div class="memwrap">
+        <div class="mem" id="mem"></div>
+        <div class="legend"><span><i style="background:#112b3a"></i>變數</span><span><i style="background:#14532d"></i>已改變</span><span><i style="background:#3b1d0a"></i>輸出/結束</span><span><i style="background:#0a1424"></i>其他</span></div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <span>CPU8b Studio · 單檔離線工具 · 目標：<code style="font-family:var(--mono);color:#8ea6c9">CPU8b.circ</code> (2.7.1) / <code style="font-family:var(--mono);color:#8ea6c9">CPU8b_evol.circ</code> (5.0)</span>
+  <span class="right"><span>r0 = 0 · ROM 256×32 · RAM 256×8</span><span id="footSize">0 / 256 words</span></span>
+</footer>
+
+
+<script>
+/* CPU8b C8 compiler core — browser + Node, no dependencies.
+   Mirrors c8c.py.  Exposes global C8. */
+(function (root) {
+'use strict';
+
+const OP = { ALU:0, ALUI:1, SHIFT:2, LI:3, LW:4, SW:5, SHIFTA:6, HALT:7 };
+const PC = { NEXT:0, JUMP:1, BRANCH:2, RET:3, CALL:4 };
+const ALU = { add:0, sub:1, and:2, or:3, xor:4 };
+const SH = { sll:5, srl:6, sra:7 };
+const COND = { eq:0, ne:1, lt:2, ge:3, gt:4, le:5 };
+const INV = { eq:'ne', ne:'eq', lt:'ge', ge:'lt', gt:'le', le:'gt' };
+const BIN = { '+':'add', '-':'sub', '&':'and', '|':'or', '^':'xor' };
+const OUT = 0xFE, EXIT = 0xFF, DATA_LIMIT = 0xE0;
+
+class C8Error extends Error {
+  constructor(msg, line, col) { super(msg); this.line=line||0; this.col=col||0; }
+}
+
+const KW = new Set(['int','byte','void','if','else','while','for','do','break','continue','return','print','printnum','putchar','exit']);
+const SYMS = ['==','!=','<=','>=','&&','||','<<','>>','+=','-=','*=','/=','%=','&=','|=','^=','++','--','+','-','*','/','%','&','|','^','~','!','<','>','=','(',')','{','}','[',']',';',',',':'];
+
+function lex(src) {
+  const out=[]; let i=0, line=1, col=1; const n=src.length;
+  const adv=(k=1)=>{ while(k--){ if(i<n && src[i]==='\n'){line++;col=1;} else col++; i++; } };
+  while(i<n){
+    const c=src[i];
+    if(c===' '||c==='\t'||c==='\r'||c==='\n'){ adv(); continue; }
+    if(c==='/'&&src[i+1]==='/'){ while(i<n&&src[i]!=='\n') adv(); continue; }
+    if(c==='/'&&src[i+1]==='*'){ adv(2); while(i+1<n&&!(src[i]==='*'&&src[i+1]==='/')) adv(); if(i+1>=n) throw new C8Error('unterminated block comment',line,col); adv(2); continue; }
+    if(/[A-Za-z_]/.test(c)){
+      const s=i, sl=line, sc=col;
+      while(i<n&&/[A-Za-z0-9_]/.test(src[i])) adv();
+      const w=src.slice(s,i); out.push({k:KW.has(w)?'kw':'id',v:w,line:sl,col:sc}); continue;
+    }
+    if(/[0-9]/.test(c)){
+      const s=i, sl=line, sc=col; let v;
+      if(c==='0'&&(src[i+1]==='x'||src[i+1]==='X')){ adv(2); while(i<n&&/[0-9a-fA-F]/.test(src[i])) adv(); v=parseInt(src.slice(s,i),16); }
+      else { while(i<n&&/[0-9]/.test(src[i])) adv(); v=parseInt(src.slice(s,i),10); }
+      out.push({k:'num',v:v,line:sl,col:sc}); continue;
+    }
+    if(c==='\''){
+      const sl=line, sc=col; adv(); let v;
+      if(src[i]==='\\'){ adv(); const e=src[i]; adv(); if(!(e in {n:1,t:1,r:1,0:1,'\\':1,"'":1,'"':1})) throw new C8Error('bad char escape',sl,sc); v={n:10,t:9,r:13,'0':0,'\\':92,"'":39,'"':34}[e]; }
+      else { v=src.charCodeAt(i); adv(); }
+      if(src[i]!=="'") throw new C8Error('unterminated char literal',sl,sc); adv();
+      out.push({k:'num',v:v&255,line:sl,col:sc}); continue;
+    }
+    if(c==='"'){
+      const sl=line, sc=col; adv(); const a=[];
+      while(i<n&&src[i]!=='"'){
+        if(src[i]==='\\'){ adv(); const e=src[i]; adv(); if(!(e in {n:1,t:1,r:1,0:1,'\\':1,'"':1})) throw new C8Error('bad string escape',sl,sc); a.push({n:10,t:9,r:13,'0':0,'\\':92,'"':34}[e]); }
+        else { a.push(src.charCodeAt(i)&255); adv(); }
+      }
+      if(i>=n) throw new C8Error('unterminated string',sl,sc); adv();
+      out.push({k:'str',v:a,line:sl,col:sc}); continue;
+    }
+    let matched=false;
+    for(const s of SYMS){ if(src.startsWith(s,i)){ out.push({k:'sym',v:s,line:line,col:col}); adv(s.length); matched=true; break; } }
+    if(matched) continue;
+    throw new C8Error('unexpected character '+JSON.stringify(c),line,col);
+  }
+  out.push({k:'eof',v:'<eof>',line:line,col:col});
+  return out;
+}
+
+
+function Parser(toks){ this.t=toks; this.i=0; }
+Parser.prototype.peek=function(k){ return this.t[Math.min(this.i+(k||0),this.t.length-1)]; };
+Parser.prototype.at=function(k,v){ const t=this.peek(); return t.k===k&&(v===undefined||t.v===v); };
+Parser.prototype.take=function(k,v){ const t=this.peek(); if(t.k!==k||(v!==undefined&&t.v!==v)) throw new C8Error('expected '+JSON.stringify(v===undefined?k:v)+', got '+JSON.stringify(t.v),t.line,t.col); this.i++; return t; };
+Parser.prototype.accept=function(k,v){ if(this.at(k,v)){ this.i++; return this.t[this.i-1]; } return null; };
+Parser.prototype.parse=function(){
+  const p={decls:[],body:[],main:''};
+  while(!this.at('eof')){
+    if(this.at('kw','int')||this.at('kw','byte')) p.decls.push(this.decl());
+    else if(this.at('kw','void')){
+      this.take('kw','void'); const name=this.take('id').v; this.take('sym','('); this.take('sym',')');
+      if(p.main) throw new C8Error('only one function is supported',this.peek().line,this.peek().col);
+      p.main=name; p.body=this.block().stmts;
+    } else p.body.push(this.stmt());
+  }
+  return p;
+};
+Parser.prototype.decl=function(){
+  const t=this.peek(); let uns=false;
+  if(this.at('kw','byte')){ this.take('kw','byte'); uns=true; } else this.take('kw','int');
+  const name=this.take('id').v; const d={t:'decl',name:name,size:1,init:null,array:false,uns:uns,line:t.line,col:t.col};
+  if(this.accept('sym','[')){ const s=this.take('num'); if(s.v<1||s.v>255) throw new C8Error('array size must be 1..255',s.line,s.col); d.size=s.v; d.array=true; this.take('sym',']'); }
+  if(this.accept('sym','=')){
+    if(d.array){ this.take('sym','{'); d.init=[]; if(!this.at('sym','}')){ for(;;){ d.init.push(this.expr()); if(!this.accept('sym',',')) break; } } this.take('sym','}'); }
+    else d.init=this.expr();
+  }
+  this.take('sym',';'); return d;
+};
+Parser.prototype.block=function(){
+  const t=this.take('sym','{'); const b={t:'block',stmts:[],line:t.line,col:t.col};
+  while(!this.at('sym','}')){ if(this.at('eof')) throw new C8Error('unterminated block',t.line,t.col); b.stmts.push(this.stmt()); }
+  this.take('sym','}'); return b;
+};
+Parser.prototype.stmt=function(){
+  const t=this.peek();
+  if(this.at('sym','{')) return this.block();
+  if(this.at('kw','int')||this.at('kw','byte')) return this.decl();
+  if(this.accept('kw','if')){ this.take('sym','('); const c=this.expr(); this.take('sym',')'); const th=this.stmt(); let el=null; if(this.accept('kw','else')) el=this.stmt(); return {t:'if',cond:c,then:th,els:el,line:t.line,col:t.col}; }
+  if(this.accept('kw','while')){ this.take('sym','('); const c=this.expr(); this.take('sym',')'); const b=this.stmt(); return {t:'while',cond:c,body:b,line:t.line,col:t.col}; }
+  if(this.accept('kw','for')){
+    this.take('sym','('); let init=null,cond=null,step=null;
+    if(!this.at('sym',';')){ if(this.at('kw','int')||this.at('kw','byte')) init=this.decl(); else { init={t:'expr',e:this.expr(),line:t.line,col:t.col}; this.take('sym',';'); } } else this.take('sym',';');
+    if(!this.at('sym',';')) cond=this.expr(); this.take('sym',';');
+    if(!this.at('sym',')')) step=this.expr(); this.take('sym',')');
+    return {t:'for',init:init,cond:cond,step:step,body:this.stmt(),line:t.line,col:t.col};
+  }
+  if(this.accept('kw','do')){ const b=this.stmt(); this.take('kw','while'); this.take('sym','('); const c=this.expr(); this.take('sym',')'); this.take('sym',';'); return {t:'dowhile',body:b,cond:c,line:t.line,col:t.col}; }
+  if(this.accept('kw','break')){ this.take('sym',';'); return {t:'break',line:t.line,col:t.col}; }
+  if(this.accept('kw','continue')){ this.take('sym',';'); return {t:'continue',line:t.line,col:t.col}; }
+  if(this.accept('kw','return')){ const v=this.at('sym',';')?null:this.expr(); this.take('sym',';'); return {t:'return',value:v,line:t.line,col:t.col}; }
+  if(this.accept('kw','print')){ this.take('sym','('); const s=this.take('str'); this.take('sym',')'); this.take('sym',';'); return {t:'print',text:s.v,line:t.line,col:t.col}; }
+  if(this.accept('kw','printnum')){ this.take('sym','('); const e=this.expr(); this.take('sym',')'); this.take('sym',';'); return {t:'printnum',e:e,line:t.line,col:t.col}; }
+  if(this.accept('kw','putchar')){ this.take('sym','('); const e=this.expr(); this.take('sym',')'); this.take('sym',';'); return {t:'putchar',e:e,line:t.line,col:t.col}; }
+  if(this.accept('kw','exit')){ this.take('sym','('); this.take('sym',')'); this.take('sym',';'); return {t:'exit',line:t.line,col:t.col}; }
+  const e=this.expr(); this.take('sym',';'); return {t:'expr',e:e,line:t.line,col:t.col};
+};
+Parser.prototype.expr=function(){ return this.assign(); };
+Parser.prototype.assign=function(){
+  const l=this.or(); const t=this.peek();
+  if(t.k==='sym' && ['=','+=','-=','*=','/=','%=','&=','|=','^='].includes(t.v)){
+    this.take('sym',t.v); const r=this.assign();
+    if(!(l.t==='var'||l.t==='index')) throw new C8Error('left side of assignment must be a variable',t.line,t.col);
+    return {t:'assign',target:l,op:t.v,value:r,line:t.line,col:t.col};
+  }
+  return l;
+};
+Parser.prototype.bin=function(sub,ops){ let n=sub.call(this); while(this.peek().k==='sym'&&ops.includes(this.peek().v)){ const t=this.peek(); this.i++; n={t:'bin',op:t.v,left:n,right:sub.call(this),line:t.line,col:t.col}; } return n; };
+Parser.prototype.or=function(){ return this.bin(this.and,['||']); };
+Parser.prototype.and=function(){ return this.bin(this.bitor,['&&']); };
+Parser.prototype.bitor=function(){ return this.bin(this.bitxor,['|']); };
+Parser.prototype.bitxor=function(){ return this.bin(this.bitand,['^']); };
+Parser.prototype.bitand=function(){ return this.bin(this.equality,['&']); };
+Parser.prototype.equality=function(){ return this.bin(this.relational,['==','!=']); };
+Parser.prototype.relational=function(){ return this.bin(this.shift,['<','<=','>','>=']); };
+Parser.prototype.shift=function(){ return this.bin(this.add,['<<','>>']); };
+Parser.prototype.add=function(){ return this.bin(this.mul,['+','-']); };
+Parser.prototype.mul=function(){ return this.bin(this.unary,['*','/','%']); };
+Parser.prototype.unary=function(){
+  const t=this.peek();
+  if(t.k==='sym'&&['-','~','!','+'].includes(t.v)){ this.i++; return {t:'unary',op:t.v,value:this.unary(),line:t.line,col:t.col}; }
+  return this.primary();
+};
+Parser.prototype.primary=function(){
+  const t=this.peek();
+  if(t.k==='num'){ this.i++; return {t:'num',v:t.v&255,line:t.line,col:t.col}; }
+  if(t.k==='id'){
+    this.i++;
+    if(this.accept('sym','(')) throw new C8Error('user-defined functions are not supported in C8 v1 (use loops)',t.line,t.col);
+    if(this.accept('sym','[')){ const idx=this.expr(); this.take('sym',']'); return {t:'index',name:t.v,index:idx,line:t.line,col:t.col}; }
+    return {t:'var',name:t.v,line:t.line,col:t.col};
+  }
+  if(this.accept('sym','(')){ const e=this.expr(); this.take('sym',')'); return e; }
+  throw new C8Error('unexpected token '+JSON.stringify(t.v),t.line,t.col);
+};
+
+
+function CodeGen(){
+  this.code=[]; this.scopes=[{}]; this.addr=0; this.sp=1; this.lid=0;
+  this.breaks=[]; this.conts=[]; this.end='__end'; this.vars={};
+}
+CodeGen.prototype.emit=function(){ const a=Array.prototype.slice.call(arguments); const op=a.shift(); this.code.push({op:op,args:a}); };
+CodeGen.prototype.label=function(name){ if(name===undefined){ this.lid++; name='L'+this.lid; } this.code.push({op:'label',args:[name]}); return name; };
+CodeGen.prototype.reg=function(){ if(this.sp>6) throw new C8Error('expression too complex (register stack overflow); split the expression'); return this.sp++; };
+CodeGen.prototype.free=function(n){ this.sp-=(n||1); if(this.sp<1) throw new Error('register stack underflow'); };
+CodeGen.prototype.declare=function(name,size,uns,line){
+  const sc=this.scopes[this.scopes.length-1];
+  if(sc[name]!==undefined) throw new C8Error('duplicate variable '+JSON.stringify(name),line);
+  if(this.addr+size>DATA_LIMIT) throw new C8Error('out of RAM for global variables (max 224 bytes)',line);
+  const a=this.addr; this.addr+=size; sc[name]={addr:a,size:size,uns:uns}; return a;
+};
+CodeGen.prototype.lookup=function(name,line){
+  for(let i=this.scopes.length-1;i>=0;i--){ if(this.scopes[i][name]!==undefined) return this.scopes[i][name]; }
+  throw new C8Error('unknown variable '+JSON.stringify(name),line);
+};
+CodeGen.prototype.gen=function(n){
+  if(n.t==='num'){ const r=this.reg(); this.emit('li',r,n.v); return r; }
+  if(n.t==='var'){
+    const v=this.lookup(n.name,n.line); if(v.size!==1) throw new C8Error('array '+JSON.stringify(n.name)+' used without an index',n.line,n.col);
+    const r=this.reg(); this.emit('lw',r,v.addr,0); return r;
+  }
+  if(n.t==='index'){
+    const v=this.lookup(n.name,n.line); if(v.size===1) throw new C8Error(JSON.stringify(n.name)+' is not an array',n.line,n.col);
+    const r=this.reg(); this.emit('li',r,v.addr); const ir=this.gen(n.index); this.emit('add',r,r,ir); this.emit('lw',r,0,r); this.free(1); return r;
+  }
+  if(n.t==='assign') return this.genAssign(n);
+  if(n.t==='unary') return this.genUnary(n);
+  if(n.t==='bin') return this.genBinary(n);
+  throw new C8Error('unsupported expression',n.line,n.col);
+};
+CodeGen.prototype.genAssign=function(n){
+  if(n.target.t==='var'){
+    const v=this.lookup(n.target.name,n.line); if(v.size!==1) throw new C8Error('array '+JSON.stringify(n.target.name)+' needs an index',n.line,n.col);
+    let r;
+    if(n.op==='=') r=this.gen(n.value);
+    else { r=this.reg(); this.emit('lw',r,v.addr,0); const vr=this.gen(n.value); this.binop(n.op.slice(0,-1),r,vr,n.line); this.free(1); }
+    this.emit('sw',r,v.addr,0); return r;
+  }
+  if(n.target.t==='index'){
+    const v=this.lookup(n.target.name,n.line); if(v.size===1) throw new C8Error(JSON.stringify(n.target.name)+' is not an array',n.line,n.col);
+    const ar=this.reg(); this.emit('li',ar,v.addr); const ir=this.gen(n.target.index); this.emit('add',ar,ar,ir); this.free(1);
+    let vr;
+    if(n.op==='=') vr=this.gen(n.value);
+    else { vr=this.reg(); this.emit('lw',vr,0,ar); const rr=this.gen(n.value); this.binop(n.op.slice(0,-1),vr,rr,n.line); this.free(1); }
+    this.emit('sw',vr,0,ar); this.emit('mv',ar,vr); this.free(1); return ar;
+  }
+  throw new C8Error('bad assignment target',n.line,n.col);
+};
+CodeGen.prototype.genUnary=function(n){
+  if(n.op==='+') return this.gen(n.value);
+  const r=this.gen(n.value);
+  if(n.op==='-') this.emit('sub',r,0,r);
+  else if(n.op==='~') this.emit('xori',r,r,255);
+  else if(n.op==='!'){
+    const t=this.reg(); this.emit('li',t,0); const l1=this.label(); this.emit('bne',r,0,l1); this.emit('li',t,1); this.label(l1); this.emit('mv',r,t); this.free(1);
+  } else throw new C8Error('bad unary operator '+n.op,n.line,n.col);
+  return r;
+};
+CodeGen.prototype.binop=function(op,a,b,line){
+  if(BIN[op]!==undefined) this.emit(BIN[op],a,a,b);
+  else if(op==='*') this.mulInPlace(a,b,line);
+  else if(op==='/'||op==='%') this.divInPlace(a,b,op,line);
+  else throw new C8Error('bad binary operator '+op,line);
+};
+CodeGen.prototype.genBinary=function(n){
+  const op=n.op;
+  if(op==='&&'||op==='||') return this.genLogical(n);
+  if(['==','!=','<','<=','>','>='].includes(op)) return this.genCompare(n);
+  if(op==='<<'||op==='>>'){
+    const a=this.gen(n.left);
+    if(n.right.t!=='num') throw new C8Error('shift amount must be a constant 0..7',n.line,n.col);
+    const sh=n.right.v&7; this.emit(op==='<<'?'slli':'srli',a,a,sh); return a;
+  }
+  if(op==='*'&&n.right.t==='num'){
+    const a=this.gen(n.left); const k=n.right.v&255;
+    if(k===0) this.emit('li',a,0);
+    else if(k===1) {}
+    else if((k&(k-1))===0) this.emit('slli',a,a,Math.log2(k)|0);
+    else { const b=this.gen(n.right); this.mulInPlace(a,b,n.line); this.free(1); }
+    return a;
+  }
+  const a=this.gen(n.left), b=this.gen(n.right);
+  this.binop(op,a,b,n.line); this.free(1); return a;
+};
+CodeGen.prototype.mulInPlace=function(a,b,line){
+  const d=this.reg(), t=this.reg(), loop=this.label(), done=this.label(), skip=this.label();
+  this.emit('li',d,0); this.label(loop); this.emit('beq',b,0,done); this.emit('andi',t,b,1); this.emit('beq',t,0,skip);
+  this.emit('add',d,d,a); this.label(skip); this.emit('slli',a,a,1); this.emit('srli',b,b,1); this.emit('j',loop);
+  this.label(done); this.emit('mv',a,d); this.free(2);
+};
+CodeGen.prototype.divInPlace=function(a,b,op,line){
+  const d=this.reg(), t=this.reg(), c=this.reg();
+  const loop=this.label(), nobit=this.label(), nosub=this.label();
+  this.emit('li',d,0); this.emit('li',c,8); this.label(loop); this.emit('slli',d,d,1); this.emit('andi',t,a,128);
+  this.emit('beq',t,0,nobit); this.emit('ori',d,d,1); this.label(nobit); this.emit('slli',a,a,1);
+  this.emit('bltu',d,b,nosub); this.emit('sub',d,d,b); this.emit('ori',a,a,1); this.label(nosub);
+  this.emit('addi',c,c,255); this.emit('bne',c,0,loop);
+  if(op==='%') this.emit('mv',a,d);
+  this.free(3);
+};
+CodeGen.prototype.genCompare=function(n){
+  const d=this.reg(), a=this.gen(n.left), b=this.gen(n.right);
+  const cond={'==':'eq','!=':'ne','<':'lt','<=':'le','>':'gt','>=':'ge'}[n.op];
+  const yes=this.label(), end=this.label();
+  this.emit('li',d,0); this.emit('b'+cond,a,b,yes); this.emit('j',end); this.label(yes); this.emit('li',d,1); this.label(end);
+  this.free(2); return d;
+};
+CodeGen.prototype.genLogical=function(n){
+  const d=this.reg(), a=this.gen(n.left), end=this.label();
+  if(n.op==='&&'){
+    this.emit('li',d,0); this.emit('beq',a,0,end); const b=this.gen(n.right); this.emit('beq',b,0,end); this.emit('li',d,1); this.free(1);
+  } else {
+    this.emit('li',d,1); this.emit('bne',a,0,end); const b=this.gen(n.right); this.emit('bne',b,0,end); this.emit('li',d,0); this.free(1);
+  }
+  this.label(end); this.free(1); return d;
+};
+
+
+CodeGen.prototype.stmt=function(n){
+  if(n.t==='block'){ this.scopes.push({}); for(const s of n.stmts) this.stmt(s); this.scopes.pop(); return; }
+  if(n.t==='decl'){
+    const a=this.declare(n.name,n.size,n.uns,n.line); this.vars[n.name]={addr:a,size:n.size,uns:n.uns};
+    if(n.init!==null && n.init!==undefined){
+      if(n.array){ for(let i=0;i<n.init.length&&i<n.size;i++){ const r=this.gen(n.init[i]); this.emit('sw',r,a+i,0); this.free(1); } }
+      else { const r=this.gen(n.init); this.emit('sw',r,a,0); this.free(1); }
+    }
+    return;
+  }
+  if(n.t==='expr'){ const r=this.gen(n.e); this.free(1); return; }
+  if(n.t==='if'){
+    const r=this.gen(n.cond), els=this.label(), end=this.label(); this.emit('beq',r,0,els); this.free(1);
+    this.stmt(n.then); this.emit('j',end); this.label(els); if(n.els) this.stmt(n.els); this.label(end); return;
+  }
+  if(n.t==='while'){
+    const start=this.label(), end=this.label(); this.breaks.push(end); this.conts.push(start); this.label(start);
+    const r=this.gen(n.cond); this.emit('beq',r,0,end); this.free(1); this.stmt(n.body); this.emit('j',start); this.label(end);
+    this.breaks.pop(); this.conts.pop(); return;
+  }
+  if(n.t==='for'){
+    this.scopes.push({}); if(n.init) this.stmt(n.init);
+    const start=this.label(), end=this.label(), cont=this.label(); this.breaks.push(end); this.conts.push(cont); this.label(start);
+    if(n.cond){ const r=this.gen(n.cond); this.emit('beq',r,0,end); this.free(1); }
+    this.stmt(n.body); this.label(cont); if(n.step){ const r=this.gen(n.step); this.free(1); } this.emit('j',start); this.label(end);
+    this.breaks.pop(); this.conts.pop(); this.scopes.pop(); return;
+  }
+  if(n.t==='dowhile'){
+    const start=this.label(), cont=this.label(), end=this.label(); this.breaks.push(end); this.conts.push(cont);
+    this.label(start); this.stmt(n.body); this.label(cont); const r=this.gen(n.cond); this.emit('bne',r,0,start); this.free(1); this.label(end);
+    this.breaks.pop(); this.conts.pop(); return;
+  }
+  if(n.t==='break'){ if(!this.breaks.length) throw new C8Error('break outside loop',n.line,n.col); this.emit('j',this.breaks[this.breaks.length-1]); return; }
+  if(n.t==='continue'){ if(!this.conts.length) throw new C8Error('continue outside loop',n.line,n.col); this.emit('j',this.conts[this.conts.length-1]); return; }
+  if(n.t==='return'){ if(n.value){ const r=this.gen(n.value); this.emit('mv',1,r); this.free(1); } this.emit('j',this.end); return; }
+  if(n.t==='print'){ for(const ch of n.text){ this.emit('li',1,ch&255); this.emit('sw',1,OUT,0); } return; }
+  if(n.t==='printnum'){ const r=this.gen(n.e); this.nibble(r,4); this.nibble(r,0); this.free(1); return; }
+  if(n.t==='putchar'){ const r=this.gen(n.e); this.emit('sw',r,OUT,0); this.free(1); return; }
+  if(n.t==='exit'){ this.emit('li',1,1); this.emit('sw',1,EXIT,0); return; }
+  throw new C8Error('unsupported statement',n.line,n.col);
+};
+CodeGen.prototype.nibble=function(r,shift){
+  const t=this.reg(); if(shift) this.emit('srli',t,r,shift); else this.emit('mv',t,r); this.emit('andi',t,t,15);
+  const u=this.reg(), l1=this.label(), l2=this.label(); this.emit('li',u,10); this.emit('blt',t,u,l1); this.emit('addi',t,t,55);
+  this.emit('j',l2); this.label(l1); this.emit('addi',t,t,48); this.label(l2); this.emit('sw',t,OUT,0); this.free(2);
+};
+CodeGen.prototype.compile=function(p){
+  for(const d of p.decls){ const a=this.declare(d.name,d.size,d.uns,d.line); this.vars[d.name]={addr:a,size:d.size,uns:d.uns};
+    if(d.init!==null&&d.init!==undefined){ if(d.array){ for(let i=0;i<d.init.length&&i<d.size;i++){ const r=this.gen(d.init[i]); this.emit('sw',r,a+i,0); this.free(1); } } else { const r=this.gen(d.init); this.emit('sw',r,a,0); this.free(1); } } }
+  for(const s of p.body) this.stmt(s);
+  this.label(this.end); this.emit('j',this.end);
+  return this.code;
+};
+
+
+function imm(v){ v=Number(v); if(!(v>=-128&&v<=255)) throw new C8Error('immediate out of range: '+v); return v&255; }
+function reg(v){
+  if(typeof v==='string'){ const m=/^[rx]([0-7])$/.exec(v.trim().toLowerCase()); if(!m) throw new C8Error('bad register '+JSON.stringify(v)); v=+m[1]; }
+  if(!(v>=0&&v<=7)) throw new C8Error('bad register r'+v); return v;
+}
+function word(o){
+  const w = (((o.rd||0)&7)<<29)|(((o.rs||0)&7)<<26)|(((o.rt||0)&7)<<23)|(((o.shamt||0)&7)<<20)|
+         (((o.funct||0)&7)<<17)|(((o.cond||0)&7)<<14)|(((o.imm||0)&255)<<6)|(((o.pcop||0)&7)<<3)|((o.op||0)&7);
+  return w>>>0;
+}
+function memOperand(args){
+  if(args.length>=2) return [args[0],args[1]];
+  const m=/^(.+?)\(\s*([rx][0-7])\s*\)$/.exec(String(args[0]).trim());
+  if(!m) throw new C8Error('bad memory operand '+JSON.stringify(args[0]));
+  return [m[1].trim(),m[2]];
+}
+function encode(ins,pc,labels){
+  const op=ins.op, a=ins.args;
+  if(op==='li') return word({rd:reg(a[0]),imm:imm(a[1]),op:OP.LI});
+  if(['add','sub','and','or','xor'].includes(op)) return word({rd:reg(a[0]),rs:reg(a[1]),rt:reg(a[2]),funct:ALU[op],op:OP.ALU});
+  if(['addi','subi','andi','ori','xori'].includes(op)){ const base=op==='addi'||op==='subi'?'add':op.slice(0,-1); let v=a[2]; if(op==='subi') v=-Number(v); return word({rd:reg(a[0]),rs:reg(a[1]),imm:imm(v),funct:ALU[base],op:OP.ALUI}); }
+  if(['slli','srli','srai'].includes(op)){ const base=op.slice(0,-1); return word({rd:reg(a[0]),rs:reg(a[1]),shamt:Number(a[2])&7,funct:SH[base],op:base==='sra'?OP.SHIFTA:OP.SHIFT}); }
+  if(op==='mv') return word({rd:reg(a[0]),rs:reg(a[1]),imm:0,funct:0,op:OP.ALUI});
+  if(op==='not') return word({rd:reg(a[0]),rs:reg(a[1]),imm:255,funct:4,op:OP.ALUI});
+  if(op==='neg') return word({rd:reg(a[0]),rs:0,rt:reg(a[1]),funct:1,op:OP.ALU});
+  if(op==='lw'){ const [o,b]=memOperand(a.slice(1)); return word({rd:reg(a[0]),rs:reg(b),imm:imm(o),op:OP.LW}); }
+  if(op==='sw'){ const [o,b]=memOperand(a.slice(1)); return word({rt:reg(a[0]),rs:reg(b),imm:imm(o),op:OP.SW}); }
+  if(op==='nop') return 0;
+  if(op==='halt') return word({op:OP.HALT});
+  if(op==='j'||op==='call'){ let t=a[0]; if(typeof t==='string'){ if(!(t in labels)) throw new C8Error('unknown label '+JSON.stringify(t)); t=labels[t]; } return word({imm:imm(t),pcop:op==='call'?PC.CALL:PC.JUMP,op:OP.ALU}); }
+  if(op==='ret') return word({pcop:PC.RET,op:OP.ALU});
+  if(op[0]==='b'){
+    const uns=op.endsWith('u'); const base=uns?op.slice(1,-1):op.slice(1);
+    if(!(base in COND)) throw new C8Error('unknown branch '+op);
+    let t=a[2]; if(typeof t==='string'){ if(!(t in labels)) throw new C8Error('unknown label '+JSON.stringify(t)); t=labels[t]; }
+    const off=t-pc; if(off<-128||off>127) throw new C8Error('branch out of range at '+pc+': '+off);
+    return word({rs:reg(a[0]),rt:reg(a[1]),cond:COND[base],imm:off&255,funct:1,pcop:PC.BRANCH,op:uns?OP.ALU:OP.SHIFTA});
+  }
+  throw new C8Error('unknown instruction '+JSON.stringify(op));
+}
+function relax(code){
+  code=code.slice();
+  for(let pass=0;pass<64;pass++){
+    const labels={}; let pc=0;
+    for(const ins of code){ if(ins.op==='label') labels[ins.args[0]]=pc; else pc++; }
+    if(pc>256) throw new C8Error('program too large: '+pc+' instructions (ROM holds 256)');
+    let changed=false;
+    for(let i=0;i<code.length;i++){
+      const ins=code[i]; if(ins.op==='label'||ins.op[0]!=='b') continue;
+      const t=ins.args[2]; if(!(t in labels)){ const e=new C8Error('unknown label '+JSON.stringify(t)); e.line=ins.line; throw e; }
+      const before=code.slice(0,i).filter(x=>x.op!=='label').length; const off=labels[t]-before;
+      if(off<-128||off>127){
+        const uns=ins.op.endsWith('u'); const base=uns?ins.op.slice(1,-1):ins.op.slice(1); const inv=INV[base];
+        const skip='__relax_'+i+'_'+code.length;
+        code.splice(i,1,{op:'b'+inv+(uns?'u':''),args:[ins.args[0],ins.args[1],skip]},{op:'j',args:[t]},{op:'label',args:[skip]});
+        changed=true; break;
+      }
+    }
+    if(!changed) return code;
+  }
+  throw new C8Error('branch relaxation did not converge');
+}
+function parseAsm(text){
+  const code=[]; const lines=String(text).split(/\r?\n/);
+  for(let ln=0;ln<lines.length;ln++){
+    let line=lines[ln].split(';')[0].split('#')[0].trim();
+    if(!line) continue;
+    let m;
+    while((m=/^([A-Za-z_]\w*)\s*:\s*(.*)$/.exec(line))){
+      code.push({op:'label',args:[m[1]],line:ln+1});
+      line=m[2].trim();
+      if(!line) break;
+    }
+    if(!line) continue;
+    m=/^([A-Za-z_]\w*)(?:\s+(.*?))?\s*$/.exec(line);
+    if(!m) throw new C8Error('bad assembly line: '+JSON.stringify(lines[ln]),ln+1);
+    const op=m[1].toLowerCase(); const rest=m[2]||''; const args=[];
+    if(rest){
+      let depth=0,cur='';
+      for(const ch of rest){
+        if(ch==='(') depth++;
+        else if(ch===')') depth--;
+        if(ch===','&&depth===0){ if(cur.trim()) args.push(cur.trim()); cur=''; }
+        else cur+=ch;
+      }
+      if(cur.trim()) args.push(cur.trim());
+    }
+    code.push({op:op,args:args,line:ln+1});
+  }
+  return code;
+}
+function assemble(code){
+  const c=relax(code); const labels={}; let pc=0;
+  for(const ins of c){ if(ins.op==='label') labels[ins.args[0]]=pc; else pc++; }
+  const words=[]; pc=0;
+  for(const ins of c){
+    if(ins.op==='label') continue;
+    try { words.push(encode(ins,pc,labels)); }
+    catch(e){ if(!e.line) e.line=ins.line; throw e; }
+    pc++;
+  }
+  return {words:words,labels:labels,code:c};
+}
+function assembleText(text){
+  const a=assemble(parseAsm(text));
+  return {words:a.words,hex:toHex(a.words),asm:fmtListing(a.code),labels:a.labels,vars:{},size:a.words.length};
+}
+function fmtIns(ins){
+  const op=ins.op, a=ins.args, r=function(v){ var t=String(v).trim(); if(/^[rx]\d+$/.test(t)) return t; return 'r'+t; };
+  if(['add','sub','and','or','xor'].includes(op)) return op+' '+r(a[0])+', '+r(a[1])+', '+r(a[2]);
+  if(['addi','subi','andi','ori','xori','slli','srli','srai'].includes(op)) return op+' '+r(a[0])+', '+r(a[1])+', '+a[2];
+  if(op==='li') return 'li '+r(a[0])+', '+a[1];
+  if(op==='mv') return 'mv '+r(a[0])+', '+r(a[1]);
+  if(op==='not'||op==='neg') return op+' '+r(a[0])+', '+r(a[1]);
+  if(op==='lw'||op==='sw'){
+    let off,base;
+    if(a.length>=3){ off=a[1]; base=a[2]; }
+    else { const m=/^(.+?)\(\s*([rx]?\d+)\s*\)$/.exec(String(a[1]).trim()); if(!m) return op+' '+a.join(', '); off=m[1].trim(); base=m[2]; }
+    return op+' '+r(a[0])+', '+off+'('+r(base)+')';
+  }
+  if(op==='j'||op==='call') return op+' '+a[0];
+  if(op==='ret'||op==='nop'||op==='halt') return op;
+  if(op[0]==='b') return op+' '+r(a[0])+', '+r(a[1])+', '+a[2];
+  return op+(a.length?' '+a.join(', '):'');
+}
+function fmtListing(code){
+  let addr=0; const out=[];
+  for(const ins of code){ if(ins.op==='label'){ out.push(ins.args[0]+':'); continue; } out.push(String(addr).padStart(2,'0')+':  '+fmtIns(ins)); addr++; }
+  return out.join('\n');
+}
+function toHex(words){
+  const lines=['v2.0 raw'];
+  for(let i=0;i<words.length;i+=8) lines.push(words.slice(i,i+8).map(w=>w.toString(16).toUpperCase().padStart(8,'0')).join(' '));
+  return lines.join('\n')+'\n';
+}
+function compile(src){
+  const p=new Parser(lex(src)).parse(); const cg=new CodeGen(); const code=cg.compile(p); const a=assemble(code);
+  return {words:a.words,hex:toHex(a.words),asm:fmtListing(a.code),labels:a.labels,vars:cg.vars,size:a.words.length};
+}
+
+
+function signed8(v){ v&=255; return v>=128?v-256:v; }
+function decode(w){ return {rd:(w>>29)&7,rs:(w>>26)&7,rt:(w>>23)&7,shamt:(w>>20)&7,funct:(w>>17)&7,cond:(w>>14)&7,imm:(w>>6)&255,pcop:(w>>3)&7,op:w&7}; }
+function newState(){
+  return {regs:new Array(8).fill(0),ram:new Array(256).fill(0),pc:0,link:0,cycles:0,halted:false,stalled:false,output:'',history:[]};
+}
+function simulate(words,opt){
+  opt=opt||{};
+  const max=opt.maxCycles||200000;
+  const st=opt.state||newState();
+  const limit=st.cycles+max;
+  while(!st.halted&&!st.stalled&&st.cycles<limit){
+    const pc0=st.pc; const w=pc0<words.length?words[pc0]:0; const d=decode(w); st.cycles++;
+    const a=st.regs[d.rs], b=d.op===1?d.imm:st.regs[d.rt];
+    let res=0;
+    if(d.op===0||d.op===1||d.op===2||d.op===6){
+      if(d.funct===0) res=(a+b)&255;
+      else if(d.funct===1) res=(a-b)&255;
+      else if(d.funct===2) res=a&b;
+      else if(d.funct===3) res=a|b;
+      else if(d.funct===4) res=a^b;
+      else if(d.funct===5) res=(a<<d.shamt)&255;
+      else if(d.funct===6) res=(a&255)>>d.shamt;
+      else res=(signed8(a)>>d.shamt)&255;
+      if(d.rd!==0) st.regs[d.rd]=res;
+    } else if(d.op===3){ if(d.rd!==0) st.regs[d.rd]=d.imm; }
+    else if(d.op===4){ const addr=(st.regs[d.rs]+d.imm)&255; if(d.rd!==0) st.regs[d.rd]=st.ram[addr]; }
+    else if(d.op===5){
+      const addr=(st.regs[d.rs]+d.imm)&255; const v=st.regs[d.rt]&255; st.ram[addr]=v;
+      if(addr===OUT) st.output+=String.fromCharCode(v);
+      else if(addr===EXIT&&v) st.halted=true;
+    } else if(d.op===7) st.halted=true;
+    let nxt=(pc0+1)&255;
+    if(d.pcop===1) nxt=d.imm;
+    else if(d.pcop===2){
+      const sign=d.op===6; const av=sign?signed8(a):(a&255), bv=sign?signed8(b):(b&255);
+      const take=[av===bv,av!==bv,av<bv,av>=bv,av>bv,av<=bv][d.cond]||false;
+      if(take) nxt=(pc0+signed8(d.imm))&255;
+    } else if(d.pcop===3) nxt=st.link;
+    else if(d.pcop===4){ st.link=(pc0+1)&255; nxt=d.imm; }
+    if(opt.trace) st.history.push({pc:pc0,word:w,regs:st.regs.slice(),ram:st.ram.slice(),out:st.output});
+    if(d.pcop===1&&nxt===pc0){ st.stalled=true; break; }
+    st.pc=nxt;
+  }
+  return st;
+}
+
+function step(words,st){ return simulate(words,{state:st,maxCycles:1}); }
+
+const C8={newState:newState,step:step,lex:lex,Parser:Parser,CodeGen:CodeGen,parseAsm:parseAsm,assemble:assemble,assembleText:assembleText,relax:relax,encode:encode,simulate:simulate,compile:compile,toHex:toHex,fmtListing:fmtListing,C8Error:C8Error};
+if(typeof module!=='undefined'&&module.exports) module.exports=C8;
+root.C8=C8;
+})(typeof globalThis!=='undefined'?globalThis:this);
+
+
+
+
+
+
+
+
+
+
+
+
+(function () {
+'use strict';
+var $ = function (id) { return document.getElementById(id); };
+var src = $('src'), gutter = $('gutter'), errBox = $('err');
+var state = { compiled: null, sim: null, lastRam: new Array(256).fill(0), changed: new Set(), tab: 'src', example: 'demo', mode: 'asm', c8src: '', asmsrc: '', ex_c8: 'hello', ex_asm: 'demo' };
+
+var EXAMPLES = {
+  hello: { name: 'Hello, CPU8b!', src: [
+    '// 最簡單的 C8 程式：問候語 + 數字輸出',
+    'int a;',
+    '',
+    'void main() {',
+    '  a = 6 * 7;',
+    '  print("Hello, CPU8b!\\n");',
+    '  print("6*7 = ");',
+    '  printnum(a);',
+    '  print("\\n");',
+    '  exit();',
+    '}'
+  ].join('\n') },
+  sum: { name: '1 + 2 + ... + 10', src: [
+    '// for 迴圈與變數',
+    'int i;',
+    'int sum;',
+    '',
+    'void main() {',
+    '  sum = 0;',
+    '  for (i = 1; i <= 10; i = i + 1) {',
+    '    sum = sum + i;',
+    '  }',
+    '  print("sum = ");',
+    '  printnum(sum);',
+    '  print("\\n");',
+    '  exit();',
+    '}'
+  ].join('\n') },
+  fib: { name: 'Fibonacci 陣列', src: [
+    '// 把前 12 個 Fibonacci 數放進陣列',
+    'int i;',
+    'int a;',
+    'int b;',
+    'int t;',
+    'int fib[12];',
+    '',
+    'void main() {',
+    '  a = 0;',
+    '  b = 1;',
+    '  for (i = 0; i < 12; i = i + 1) {',
+    '    fib[i] = a;',
+    '    t = a + b;',
+    '    a = b;',
+    '    b = t;',
+    '  }',
+    '  for (i = 0; i < 12; i = i + 1) {',
+    '    printnum(fib[i]);',
+    '    print(" ");',
+    '  }',
+    '  print("\\n");',
+    '  exit();',
+    '}'
+  ].join('\n') },
+  sort: { name: '氣泡排序', src: [
+    '// 陣列、巢狀迴圈、交換',
+    'int a[8] = {5, 3, 8, 1, 9, 2, 7, 4};',
+    'int i;',
+    'int j;',
+    'int t;',
+    '',
+    'void main() {',
+    '  for (i = 0; i < 7; i = i + 1) {',
+    '    for (j = 0; j < 7 - i; j = j + 1) {',
+    '      if (a[j] > a[j + 1]) {',
+    '        t = a[j];',
+    '        a[j] = a[j + 1];',
+    '        a[j + 1] = t;',
+    '      }',
+    '    }',
+    '  }',
+    '  for (i = 0; i < 8; i = i + 1) {',
+    '    printnum(a[i]);',
+    '    print(" ");',
+    '  }',
+    '  print("\\n");',
+    '  exit();',
+    '}'
+  ].join('\n') },
+  muldiv: { name: '乘除與餘數', src: [
+    '// 變數乘法、無號除法、餘數',
+    'int a;',
+    'int b;',
+    'int m;',
+    'int q;',
+    'int r;',
+    '',
+    'void main() {',
+    '  a = 13;',
+    '  b = 7;',
+    '  m = a * b;',
+    '  q = a / b;',
+    '  r = a % b;',
+    '  print("13*7 = "); printnum(m); print("\\n");',
+    '  print("13/7 = "); printnum(q); print("\\n");',
+    '  print("13%7 = "); printnum(r); print("\\n");',
+    '  exit();',
+    '}'
+  ].join('\n') },
+  control: { name: 'if / while / break', src: [
+    '// 條件、邏輯運算、break / continue',
+    'int i;',
+    'int acc;',
+    '',
+    'void main() {',
+    '  acc = 0;',
+    '  i = 0;',
+    '  while (i < 20) {',
+    '    i = i + 1;',
+    '    if (i == 3) continue;',
+    '    if (i == 9) break;',
+    '    if ((i & 1) == 0 || i > 7) {',
+    '      acc = acc + i;',
+    '    } else {',
+    '      acc = acc + 1;',
+    '    }',
+    '  }',
+    '  print("acc = ");',
+    '  printnum(acc);',
+    '  print("\\n");',
+    '  exit();',
+    '}'
+  ].join('\n') }
+};
+
+var ASM_EXAMPLES = {
+  demo: { name: '1+2+…+5 → RAM[0]', src: [
+    '; 1+2+3+4+5 -> RAM[0]',
+    '        li   r1, 0',
+    '        li   r2, 1',
+    '        li   r3, 6',
+    'loop:   blt  r2, r3, body',
+    '        j    done',
+    'body:   add  r1, r1, r2',
+    '        addi r2, r2, 1',
+    '        j    loop',
+    'done:   sw   r1, 0(r0)',
+    'end:    j    end'
+  ].join('\n') },
+  sum10: { name: '1+2+…+10 → RAM[0]', src: [
+    '; 1+2+...+10 -> RAM[0]',
+    '        li   r1, 0',
+    '        li   r2, 1',
+    '        li   r3, 11',
+    'loop:   bge  r2, r3, done',
+    '        add  r1, r1, r2',
+    '        addi r2, r2, 1',
+    '        j    loop',
+    'done:   sw   r1, 0(r0)',
+    'end:    j    end'
+  ].join('\n') },
+  fib: { name: 'Fibonacci → RAM[0..9]', src: [
+    '; 前 10 個 Fibonacci 數 -> RAM[0..9]',
+    '        li   r1, 0',
+    '        li   r2, 1',
+    '        li   r3, 0',
+    '        li   r4, 10',
+    'loop:   sw   r1, 0(r3)',
+    '        add  r6, r1, r2',
+    '        mv   r1, r2',
+    '        mv   r2, r6',
+    '        addi r3, r3, 1',
+    '        blt  r3, r4, loop',
+    'end:    j    end'
+  ].join('\n') },
+  call: { name: 'call / ret：max(12,5)', src: [
+    '; max(12,5) -> RAM[0]',
+    '        li   r1, 12',
+    '        li   r2, 5',
+    '        call max',
+    '        sw   r3, 0(r0)',
+    'end:    j    end',
+    'max:    bge  r1, r2, m1',
+    '        mv   r3, r2',
+    '        ret',
+    'm1:     mv   r3, r1',
+    '        ret'
+  ].join('\n') },
+  branch: { name: '有號 / 無號分支', src: [
+    '; -1 < 1（有號），0xFF > 1（無號）',
+    '        li   r1, -1',
+    '        li   r2, 1',
+    '        li   r3, 0',
+    '        blt  r1, r2, s_ok',
+    '        j    s_done',
+    's_ok:   li   r3, 1',
+    's_done: sw   r3, 0(r0)',
+    '        li   r4, 255',
+    '        li   r5, 1',
+    '        li   r6, 0',
+    '        bgtu r4, r5, u_ok',
+    '        j    u_done',
+    'u_ok:   li   r6, 2',
+    'u_done: sw   r6, 1(r0)',
+    'end:    j    end'
+  ].join('\n') },
+  io: { name: '輸出 "Hi"（模擬器）', src: [
+    '; 模擬器約定：RAM[0xFE] = console，RAM[0xFF] = exit',
+    '        li   r1, 72',
+    '        sw   r1, 254(r0)',
+    '        li   r1, 105',
+    '        sw   r1, 254(r0)',
+    '        li   r1, 10',
+    '        sw   r1, 254(r0)',
+    '        li   r1, 1',
+    '        sw   r1, 255(r0)',
+    'end:    j    end'
+  ].join('\n') },
+  mul: { name: '乘法：7×6 累加', src: [
+    '; 7*6 = 42 -> RAM[0]',
+    '        li   r1, 0',
+    '        li   r2, 7',
+    '        li   r3, 6',
+    'loop:   beq  r3, r0, done',
+    '        add  r1, r1, r2',
+    '        addi r3, r3, -1',
+    '        j    loop',
+    'done:   sw   r1, 0(r0)',
+    'end:    j    end'
+  ].join('\n') }
+};
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function hex2(v) { return (v & 255).toString(16).toUpperCase().padStart(2, '0'); }
+function setStatus(kind, text) {
+  var dot = $('dot');
+  dot.className = 'dot' + (kind ? ' ' + kind : '');
+  $('statusText').textContent = text;
+  $('cpuHint').textContent = kind === 'run' ? 'running' : (kind === 'ok' ? 'ready' : (kind === 'bad' ? 'error' : (kind === 'warn' ? 'paused' : 'idle')));
+}
+function updateGutter() {
+  var n = src.value.split('\n').length;
+  var a = new Array(n);
+  for (var i = 0; i < n; i++) a[i] = i + 1;
+  gutter.textContent = a.join('\n');
+  gutter.scrollTop = src.scrollTop;
+}
+function updateChanged() {
+  if (!state.sim) return;
+  for (var i = 0; i < 256; i++) {
+    if (state.sim.ram[i] !== state.lastRam[i]) state.changed.add(i);
+    state.lastRam[i] = state.sim.ram[i];
+  }
+}
+function resetSim(renderNow) {
+  state.sim = C8.newState();
+  state.lastRam = new Array(256).fill(0);
+  state.changed = new Set();
+  if (renderNow !== false) render();
+}
+function renderAsm(text, pc) {
+  var lines = String(text).split('\n');
+  var out = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i], addr = null, inner;
+    var m = /^([0-9A-Fa-f]{2}):\s*(.*)$/.exec(line);
+    if (m) {
+      addr = parseInt(m[1], 16);
+      inner = '<span class="addr">' + m[1].toUpperCase() + '</span>  ' + esc(m[2]);
+    } else if (line.charAt(line.length - 1) === ':') {
+      inner = '<span class="lbl">' + esc(line) + '</span>';
+    } else {
+      inner = esc(line);
+    }
+    out.push('<div class="aline' + (addr !== null && addr === pc ? ' cur' : '') + '"' +
+      (addr !== null ? ' data-addr="' + addr + '"' : '') + '>' + (inner || '&nbsp;') + '</div>');
+  }
+  return out.join('');
+}
+function highlightPc() {
+  var asm = $('asm');
+  var old = asm.querySelector('.cur');
+  if (old) old.classList.remove('cur');
+  if (!state.sim) return;
+  var el = asm.querySelector('[data-addr="' + state.sim.pc + '"]');
+  if (el) {
+    el.classList.add('cur');
+    try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+  }
+}
+function renderVars() {
+  var box = $('vars');
+  if (state.mode === 'asm') {
+    var labels = (state.compiled && state.compiled.labels) ? state.compiled.labels : null;
+    if (!labels || Object.keys(labels).length === 0) {
+      box.innerHTML = '<div class="var"><span class="name" style="color:#617a9e">尚無標籤</span><span class="addr"></span><span class="val"></span></div>';
+      return;
+    }
+    var names = Object.keys(labels), html = [];
+    for (var k = 0; k < names.length; k++) {
+      var name = names[k], addr = labels[name];
+      var w = ((state.compiled.words[addr] || 0) >>> 0).toString(16).toUpperCase().padStart(8, '0');
+      html.push('<div class="var"><span class="name" title="' + esc(name) + '">' + esc(name) +
+        '</span><span class="addr">@' + hex2(addr) + '</span><span class="val" title="0x' + w + '">0x' + w + '</span></div>');
+    }
+    box.innerHTML = html.join('');
+    return;
+  }
+  if (!state.compiled || !state.compiled.vars || Object.keys(state.compiled.vars).length === 0) {
+    box.innerHTML = '<div class="var"><span class="name" style="color:#617a9e">尚無變數</span><span class="addr"></span><span class="val"></span></div>';
+    return;
+  }
+  var ram = state.sim ? state.sim.ram : new Array(256).fill(0);
+  var names2 = Object.keys(state.compiled.vars);
+  var html2 = [];
+  for (var j = 0; j < names2.length; j++) {
+    var name2 = names2[j], v = state.compiled.vars[name2];
+    var txt;
+    if (v.size === 1) {
+      txt = '0x' + hex2(ram[v.addr]) + ' · ' + ram[v.addr];
+    } else {
+      var parts = [];
+      for (var q = 0; q < v.size && q < 8; q++) parts.push(hex2(ram[v.addr + q]));
+      if (v.size > 8) parts.push('…');
+      txt = parts.join(' ');
+    }
+    html2.push('<div class="var"><span class="name" title="' + esc(name2) + '">' + esc(name2) +
+      '</span><span class="addr">@' + hex2(v.addr) + '</span><span class="val" title="' + esc(txt) + '">' + esc(txt) + '</span></div>');
+  }
+  box.innerHTML = html2.join('');
+}
+function renderMem() {
+  var mem = $('mem');
+  var ram = state.sim ? state.sim.ram : new Array(256).fill(0);
+  var varAddrs = new Set();
+  if (state.compiled && state.compiled.vars) {
+    var names = Object.keys(state.compiled.vars);
+    for (var n = 0; n < names.length; n++) {
+      var v = state.compiled.vars[names[n]];
+      for (var k = 0; k < v.size; k++) varAddrs.add(v.addr + k);
+    }
+  }
+  for (var i = 0; i < 256; i++) {
+    var el = mem.children[i];
+    var val = ram[i];
+    el.textContent = hex2(val);
+    var cls = '';
+    if (i === 0xFE || i === 0xFF) cls = 'port';
+    else if (state.changed.has(i)) cls = 'changed';
+    else if (varAddrs.has(i)) cls = 'memvar';
+    else if (val === 0) cls = 'zero';
+    el.className = cls;
+    el.title = '0x' + hex2(i) + ' = 0x' + hex2(val) + ' (' + val + ')';
+  }
+}
+function render() {
+  updateChanged();
+  var st = state.sim;
+  var regs = $('regs');
+  var html = [];
+  for (var i = 0; i < 8; i++) {
+    html.push('<div class="reg"><div class="n">r' + i + (i === 0 ? ' (zero)' : '') + '</div><div class="v">' +
+      hex2(st ? st.regs[i] : 0) + '</div></div>');
+  }
+  regs.innerHTML = html.join('');
+  $('pc').textContent = hex2(st ? st.pc : 0);
+  $('link').textContent = hex2(st ? st.link : 0);
+  $('cycles').textContent = st ? st.cycles : 0;
+  var out = $('out');
+  if (st && st.output) {
+    out.textContent = st.output;
+    out.scrollTop = out.scrollHeight;
+  } else {
+    out.innerHTML = '<span class="dim">（輸出會顯示在這裡）</span>';
+  }
+  renderVars();
+  renderMem();
+  highlightPc();
+  $('sizeBadge').textContent = state.compiled ? state.compiled.size : 0;
+  $('footSize').textContent = (state.compiled ? state.compiled.size : 0) + ' / 256 words';
+}
+function showError(e) {
+  var msg = e && e.message ? e.message : String(e);
+  var line = e && e.line ? e.line : 0, col = e && e.col ? e.col : 0;
+  errBox.textContent = (line ? '第 ' + line + ' 行' + (col ? '第 ' + col + ' 欄' : '') + '：' : '') + msg;
+  errBox.classList.add('show');
+  setStatus('bad', state.mode === 'asm' ? '組譯錯誤' : '編譯錯誤');
+  if (line) {
+    var lines = src.value.split('\n');
+    var pos = 0;
+    for (var i = 0; i < line - 1 && i < lines.length; i++) pos += lines[i].length + 1;
+    try {
+      src.focus();
+      src.setSelectionRange(pos, pos + (lines[line - 1] ? lines[line - 1].length : 0));
+      var lh = 13 * 1.65;
+      src.scrollTop = Math.max(0, (line - 3) * lh);
+      gutter.scrollTop = src.scrollTop;
+    } catch (x) {}
+  }
+}
+function compile() {
+  try {
+    var r = state.mode === 'asm' ? C8.assembleText(src.value) : C8.compile(src.value);
+    state.compiled = r;
+    errBox.classList.remove('show');
+    $('asm').innerHTML = renderAsm(r.asm, -1);
+    $('hex').textContent = r.hex;
+    resetSim(false);
+    render();
+    setStatus('ok', (state.mode === 'asm' ? '組譯成功' : '編譯成功') + ' · ' + r.size + ' words');
+    return true;
+  } catch (e) {
+    state.compiled = null;
+    showError(e);
+    render();
+    return false;
+  }
+}
+function run() {
+  if (!state.compiled && !compile()) return;
+  state.sim = C8.newState();
+  state.lastRam = new Array(256).fill(0);
+  state.changed = new Set();
+  state.sim = C8.simulate(state.compiled.words, { state: state.sim, maxCycles: 200000 });
+  render();
+  if (state.sim.halted) setStatus('ok', '執行完成 · ' + state.sim.cycles + ' cycles');
+  else if (state.sim.stalled) setStatus('warn', '程式停在 j self · ' + state.sim.cycles + ' cycles');
+  else setStatus('warn', '達到 cycle 上限 · ' + state.sim.cycles);
+}
+function step() {
+  if (!state.compiled && !compile()) return;
+  if (!state.sim) resetSim(false);
+  if (state.sim.halted || state.sim.stalled) return;
+  C8.step(state.compiled.words, state.sim);
+  render();
+  if (state.sim.halted) setStatus('ok', '已停止 · ' + state.sim.cycles + ' cycles');
+  else if (state.sim.stalled) setStatus('warn', 'j self · ' + state.sim.cycles + ' cycles');
+  else setStatus('run', '單步 · PC = 0x' + hex2(state.sim.pc));
+}
+function currentExamples() { return state.mode === 'asm' ? ASM_EXAMPLES : EXAMPLES; }
+function populateExamples() {
+  var ex = currentExamples();
+  var keys = Object.keys(ex);
+  sel.innerHTML = '';
+  for (var i = 0; i < keys.length; i++) {
+    var o = document.createElement('option');
+    o.value = keys[i];
+    o.textContent = (state.mode === 'asm' ? 'ASM · ' : 'C8 · ') + ex[keys[i]].name;
+    sel.appendChild(o);
+  }
+  if (!ex[state.example]) state.example = keys[0];
+  sel.value = state.example;
+}
+function updateModeUI() {
+  var btns = document.querySelectorAll('.modebtn');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].getAttribute('data-mode') === state.mode);
+  $('varsTitle').textContent = state.mode === 'asm' ? '符號表' : '變數';
+  $('varsHint').textContent = state.mode === 'asm' ? 'ROM labels' : 'RAM';
+}
+function saveSource() {
+  try {
+    localStorage.setItem(state.mode === 'asm' ? 'cpu8b.asmsrc' : 'cpu8b.c8src', src.value);
+    localStorage.setItem('cpu8b.ex.' + state.mode, state.example);
+    localStorage.setItem('cpu8b.mode', state.mode);
+  } catch (e) {}
+}
+function switchMode(mode) {
+  if (mode !== 'c8' && mode !== 'asm') return;
+  if (mode !== state.mode) {
+    state['ex_' + state.mode] = state.example;
+    saveSource();
+    state.mode = mode;
+  }
+  var ex = currentExamples();
+  var saved = state['ex_' + state.mode];
+  if (!saved || !ex[saved]) saved = Object.keys(ex)[0];
+  state.example = saved;
+  var text = state[mode === 'asm' ? 'asmsrc' : 'c8src'];
+  src.value = text || ex[saved].src;
+  populateExamples();
+  updateModeUI();
+  updateGutter();
+  compile();
+}
+function loadExample(key) {
+  var ex = currentExamples();
+  if (!ex[key]) key = Object.keys(ex)[0];
+  state.example = key;
+  src.value = ex[key].src;
+  state['ex_' + state.mode] = key;
+  updateGutter();
+  saveSource();
+  compile();
+  setTab('src');
+}
+function setTab(tab) {
+  state.tab = tab;
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', tabs[i].getAttribute('data-tab') === tab);
+  var panes = document.querySelectorAll('.pane');
+  for (var j = 0; j < panes.length; j++) panes[j].classList.toggle('active', panes[j].id === 'pane-' + tab);
+  if (tab === 'asm' && state.sim) highlightPc();
+}
+function download() {
+  if (!state.compiled && !compile()) return;
+  var blob = new Blob([state.compiled.hex], { type: 'text/plain' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (state.mode === 'asm' ? 'asm_' : 'c8_') + (state.example || 'program') + '.hex';
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+function downloadText(text, name, mime) {
+  var blob = new Blob([text], { type: mime || 'text/plain' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function injectCircuit(text, filename) {
+  if (!state.compiled && !compile()) return;
+  var blocks = text.match(/<comp\b[^>]*\bname="ROM"[^>]*>[\s\S]*?<\/comp>/g) || [];
+  var chosen = null;
+  for (var i = 0; i < blocks.length; i++) {
+    if (/dataWidth[^>]*val="32"/.test(blocks[i]) || /addr\/data:\s*8\s+32/.test(blocks[i])) { chosen = blocks[i]; break; }
+  }
+  if (!chosen) throw new Error('找不到 32-bit ROM（需要 addr/data: 8 32）');
+  var words = state.compiled.words, lines = [];
+  for (var k = 0; k < words.length; k += 8) {
+    lines.push(words.slice(k, k + 8).map(function (w) { return (w >>> 0).toString(16).toUpperCase().padStart(8, '0'); }).join(' '));
+  }
+  var contents = '<a name="contents">addr/data: 8 32\n' + lines.join('\n') + '\n</a>';
+  var newBlock;
+  if (/<a name="contents">[\s\S]*?<\/a>/.test(chosen)) newBlock = chosen.replace(/<a name="contents">[\s\S]*?<\/a>/, contents);
+  else newBlock = chosen.replace(/<\/comp>/, '  ' + contents + '\n    </comp>');
+  var out = text.replace(chosen, newBlock);
+  var name = filename.replace(/\.circ$/i, '') + '_programmed.circ';
+  downloadText(out, name, 'application/xml');
+  setStatus('ok', '已寫入 ROM · ' + words.length + ' words · ' + name);
+}
+
+/* init */
+var sel = $('examples');
+var mem = $('mem');
+for (var m = 0; m < 256; m++) {
+  var d = document.createElement('div'); d.textContent = '00'; mem.appendChild(d);
+}
+src.addEventListener('input', function () {
+  updateGutter();
+  saveSource();
+});
+src.addEventListener('scroll', function () { gutter.scrollTop = src.scrollTop; });
+src.addEventListener('keydown', function (e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    var s = src.selectionStart, t = src.selectionEnd;
+    src.value = src.value.slice(0, s) + '  ' + src.value.slice(t);
+    src.selectionStart = src.selectionEnd = s + 2;
+    updateGutter();
+  }
+});
+sel.addEventListener('change', function () { loadExample(sel.value); });
+var modeBtns = document.querySelectorAll('.modebtn');
+for (var mi = 0; mi < modeBtns.length; mi++) modeBtns[mi].addEventListener('click', function () { switchMode(this.getAttribute('data-mode')); });
+$('btnCompile').addEventListener('click', function () { if (compile()) setTab('src'); });
+$('btnRun').addEventListener('click', run);
+$('btnStep').addEventListener('click', step);
+$('btnReset').addEventListener('click', function () { resetSim(true); setStatus('', '已重設'); });
+$('btnDownload').addEventListener('click', download);
+$('btnCircuit').addEventListener('click', function () { $('circFile').click(); });
+$('circFile').addEventListener('change', function (e) {
+  var f = e.target.files && e.target.files[0];
+  if (!f) return;
+  if (!state.compiled && !compile()) return;
+  var reader = new FileReader();
+  reader.onload = function () {
+    try { injectCircuit(String(reader.result), f.name); }
+    catch (err) { showError(err); }
+  };
+  reader.readAsText(f, 'utf-8');
+  e.target.value = '';
+});
+var tabs = document.querySelectorAll('.tab');
+for (var ti = 0; ti < tabs.length; ti++) tabs[ti].addEventListener('click', function () { setTab(this.getAttribute('data-tab')); });
+document.addEventListener('keydown', function (e) {
+  if (e.ctrlKey && (e.key === 'Enter' || e.keyCode === 13)) { e.preventDefault(); if (compile()) run(); }
+  else if (e.key === 'F5') { e.preventDefault(); run(); }
+  else if (e.key === 'F10') { e.preventDefault(); step(); }
+  else if (e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); download(); }
+});
+try {
+  state.mode = localStorage.getItem('cpu8b.mode') === 'c8' ? 'c8' : 'asm';
+  state.c8src = localStorage.getItem('cpu8b.c8src') || localStorage.getItem('cpu8b.src') || EXAMPLES.hello.src;
+  state.asmsrc = localStorage.getItem('cpu8b.asmsrc') || ASM_EXAMPLES.demo.src;
+  state.ex_c8 = localStorage.getItem('cpu8b.ex.c8') || 'hello';
+  state.ex_asm = localStorage.getItem('cpu8b.ex.asm') || 'demo';
+} catch (e) {
+  state.mode = 'asm';
+  state.c8src = EXAMPLES.hello.src;
+  state.asmsrc = ASM_EXAMPLES.demo.src;
+}
+var ex0 = currentExamples();
+state.example = state['ex_' + state.mode];
+if (!ex0[state.example]) state.example = Object.keys(ex0)[0];
+src.value = (state.mode === 'asm' ? state.asmsrc : state.c8src) || ex0[state.example].src;
+populateExamples();
+updateModeUI();
+updateGutter();
+compile();
+setStatus('ok', state.mode === 'asm' ? 'ASM 模式 · 直接寫組合語言' : 'C8 模式 · 按執行或 F5');
+})();
+</script>
+</body>
+</html>
