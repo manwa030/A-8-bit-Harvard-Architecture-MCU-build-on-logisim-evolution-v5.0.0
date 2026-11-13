@@ -6,7 +6,7 @@ It includes an ALU capable of processing 8-bit data, a register file, a program 
 The author of logisim-evolution is **Dr. Theo Kluter** (GitHub: [BFH-ktt1](https://github.com/BFH-ktt1))  
 I made this MPU using this platform and the MPU project is for personal learning purposes only.  
 # How to use the above file  
-First, download Logisim Evolution v5.0.0.  
+First, [download Logisim Evolution v5.0.0.](https://github.com/logisim-evolution/logisim-evolution/releases/tag/v5.0.0)  
 Second, open the CPU8b.circ file within the software.  
 Then, select any MachineCode.hex file from the Program Example and load it into the ROM.  
 Finally, press Ctrl+K to run the program.  
